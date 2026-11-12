@@ -20,29 +20,48 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: widgetbook
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      # Finds the Widgetbook app wherever it lives in the repo
+      # (widgetbook/, app/widgetbook/, mobile/widgetbook/, ...) by its package name.
+      - name: Locate Widgetbook
+        run: |
+          pubspec=$(grep -rls --include=pubspec.yaml '^name: widgetbook_workspace' . | head -n 1)
+          if [ -z "$pubspec" ]; then
+            echo "::error::No pubspec.yaml with 'name: widgetbook_workspace' in this commit. Make sure the widgetbook folder is committed and pushed to main, and that its pubspec name was changed to widgetbook_workspace."
+            echo "pubspec.yaml files in this commit:"
+            find . -name pubspec.yaml -not -path './.git/*'
+            exit 1
+          fi
+          dir=$(dirname "$pubspec")
+          dir=${dir#./}
+          echo "Widgetbook found in: $dir"
+          echo "WIDGETBOOK_DIR=$dir" >> "$GITHUB_ENV"
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - run: flutter pub get
+      - name: Install dependencies
+        working-directory: ${{ env.WIDGETBOOK_DIR }}
+        run: flutter pub get
 
       # Generates main.directories.g.dart from the @UseCase annotations.
-      - run: dart run build_runner build -d
+      - name: Generate use cases
+        working-directory: ${{ env.WIDGETBOOK_DIR }}
+        run: dart run build_runner build -d
 
       # GitHub Pages serves the site under /<repo>/, so the base href must match.
       # If you host on a custom domain or Netlify/Vercel/Cloudflare root, use --base-href "/".
-      - run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+      - name: Build for web
+        working-directory: ${{ env.WIDGETBOOK_DIR }}
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
-          path: widgetbook/build/web
+          path: ${{ env.WIDGETBOOK_DIR }}/build/web
 
   deploy:
     needs: build
@@ -52,4 +71,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
