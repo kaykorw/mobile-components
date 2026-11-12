@@ -1,0 +1,55 @@
+# Builds the Widgetbook (Flutter web) on every push to main and publishes it to GitHub Pages.
+# One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
+# Result: https://<org-or-user>.github.io/<repo>/
+name: Deploy Widgetbook
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: widgetbook
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Generates main.directories.g.dart from the @UseCase annotations.
+      - run: dart run build_runner build -d
+
+      # GitHub Pages serves the site under /<repo>/, so the base href must match.
+      # If you host on a custom domain or Netlify/Vercel/Cloudflare root, use --base-href "/".
+      - run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: widgetbook/build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
