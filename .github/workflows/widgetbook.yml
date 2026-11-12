@@ -1,7 +1,7 @@
 # Builds the Widgetbook (Flutter web) on every push to main and publishes it to GitHub Pages.
 # One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
 # Result: https://<org-or-user>.github.io/<repo>/
-name: widgetbook_workspace
+name: Deploy Widgetbook
 
 on:
   push:
