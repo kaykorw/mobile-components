@@ -1,19 +1,11 @@
-// Use-case template — copy this pattern for every component.
-//
-// Rules that keep Flutter, React and zeroheight in sync:
-//  - Use-case `name`s MUST match the React story names exactly
-//    (Primary, Secondary, Danger, Disabled, Loading).
-//  - Enum values (AppButtonVariant, AppButtonSize) use the same names as the
-//    React `variant` / `size` options.
-//  - `path` puts every component under one "Components" category, grouped by
-//    family (actions, inputs, feedback, navigation, ...).
-//
-// TODO: replace `AppButton`, its parameters and the import with your real widget.
+// Use-case names (Primary, Secondary, Danger, Disabled, Loading) MUST match
+// the React story names. Never rename them once embedded in zeroheight.
 import 'package:app_ui/app_ui.dart';
-
 import 'package:flutter/material.dart';
 import 'package:widgetbook/widgetbook.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart' as widgetbook;
+
+import 'preview_surface.dart';
 
 /// Shared builder so every use case exposes the same knobs.
 Widget _buildButton(
@@ -23,17 +15,21 @@ Widget _buildButton(
   bool disabled = false,
   bool loading = false,
 }) {
-  return AppButton(
-    label: context.knobs.string(label: 'label', initialValue: label),
-    variant: variant,
-    size: context.knobs.object.dropdown(
-      label: 'size',
-      options: AppButtonSize.values,
-      labelBuilder: (value) => value.name,
+  return previewSurface(
+    context,
+    AppButton(
+      label: context.knobs.string(label: 'label', initialValue: label),
+      variant: variant,
+      size: context.knobs.object.dropdown(
+        label: 'size',
+        options: AppButtonSize.values,
+        initialOption: AppButtonSize.medium,
+        labelBuilder: (value) => value.name,
+      ),
+      isDisabled: context.knobs.boolean(label: 'disabled', initialValue: disabled),
+      isLoading: context.knobs.boolean(label: 'loading', initialValue: loading),
+      onPressed: () {},
     ),
-    isDisabled: context.knobs.boolean(label: 'disabled', initialValue: disabled),
-    isLoading: context.knobs.boolean(label: 'loading', initialValue: loading),
-    onPressed: () {},
   );
 }
 
