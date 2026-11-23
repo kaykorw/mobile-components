@@ -19,11 +19,11 @@ class WidgetbookApp extends StatelessWidget {
     return Widgetbook.material(
       directories: directories,
       addons: [
-        // Same colours as the Storybook Light/Dark toolbar (react tokens.css).
+        // Kayko theme: colours sampled from the product (same as react tokens.css).
+        // Add a Dark theme here once there are dark tokens.
         MaterialThemeAddon(
           themes: [
-            WidgetbookTheme(name: 'Light', data: AppTheme.light()),
-            WidgetbookTheme(name: 'Dark', data: AppTheme.dark()),
+            WidgetbookTheme(name: 'Kayko', data: AppTheme.light()),
           ],
         ),
         // Order matters: viewport first, then alignment.

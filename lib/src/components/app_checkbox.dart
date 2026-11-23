@@ -1,15 +1,16 @@
-// AppCheckbox: Flutter counterpart of React <Checkbox>.
+// AppCheckbox: Flutter counterpart of React <Checkbox>. Drawn by hand (not
+// Material's Checkbox) so the box, border and states match React exactly.
 //
 // API mapping (React -> Flutter):
-//   checked        -> value
-//   indeterminate  -> isIndeterminate
-//   disabled       -> isDisabled
-//   error          -> errorText
-//   label, description: same names
-//   onChange(event) -> onChanged(bool)
-//
+//   checked -> value, indeterminate -> isIndeterminate, disabled -> isDisabled,
+//   error -> errorText, label/description: same, onChange(event) -> onChanged(bool)
 // Clicking an indeterminate checkbox checks it, on both platforms.
 import 'package:flutter/material.dart';
+
+import '../foundation/app_pressable.dart';
+import '../theme/app_metrics.dart';
+import '../theme/app_tokens.dart';
+import 'app_icon.dart';
 
 class AppCheckbox extends StatelessWidget {
   const AppCheckbox({
@@ -21,28 +22,26 @@ class AppCheckbox extends StatelessWidget {
     this.errorText,
     this.isIndeterminate = false,
     this.isDisabled = false,
+    this.semanticLabel,
   });
 
-  /// Checked or not. Ignored for display while [isIndeterminate] is true.
+  /// Checked or not. Shown as a dash while [isIndeterminate] is true.
   final bool value;
 
-  /// Called with the new value. Tapping the label also toggles the checkbox.
+  /// Called with the new value. Tapping the label also toggles it.
   final ValueChanged<bool>? onChanged;
-
-  /// Text next to the box.
   final String? label;
-
-  /// Helper text under the label.
   final String? description;
 
-  /// Error message under the label. Turns the box red.
+  /// Turns the box red and shows the message under the label.
   final String? errorText;
 
-  /// Shows a dash: some, but not all, children are selected.
+  /// Some, but not all, children are selected.
   final bool isIndeterminate;
-
-  /// Blocks interaction and greys the checkbox out.
   final bool isDisabled;
+
+  /// Accessible name when there is no [label] (e.g. "Select all rows").
+  final String? semanticLabel;
 
   bool get _isEnabled => !isDisabled && onChanged != null;
 
@@ -50,92 +49,94 @@ class AppCheckbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final t = AppTokens.of(context);
     final hasError = errorText != null;
-    final disabledColor = colors.onSurface.withValues(alpha: 0.38);
+    final isOn = value || isIndeterminate;
 
-    // 24 x 24 like React: shrinkWrap (40) + minimum density (-16).
-    final box = Checkbox(
-      value: isIndeterminate ? null : value,
-      tristate: true,
-      isError: hasError,
-      onChanged: _isEnabled ? (_) => _toggle() : null,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: const VisualDensity(
-        horizontal: VisualDensity.minimumDensity,
-        vertical: VisualDensity.minimumDensity,
-      ),
-      splashRadius: 14,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(4)),
-      ),
-      // Fill and check colours use the Material 3 defaults (primary / error /
-      // 38% when disabled). Only the unchecked border is customised.
-      side: WidgetStateBorderSide.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return const BorderSide(width: 0, color: Colors.transparent);
+    return AppPressable(
+      onTap: _isEnabled ? _toggle : null,
+      enabled: !isDisabled,
+      isButton: false,
+      checked: isIndeterminate ? null : value,
+      mixed: isIndeterminate ? true : null,
+      semanticLabel: label ?? semanticLabel,
+      builder: (context, states) {
+        final hovered = states.contains(WidgetState.hovered);
+        final focused = states.contains(WidgetState.focused);
+
+        Color fill = t.surface;
+        Color border = t.borderStrong;
+        if (isDisabled) {
+          fill = isOn ? t.primaryDisabled : t.surfaceMuted;
+          border = isOn ? t.primaryDisabled : t.borderInput;
+        } else if (isOn) {
+          fill = hasError ? t.danger : t.primary;
+          border = fill;
+        } else if (hasError) {
+          border = t.dangerAccent;
+        } else if (hovered || focused) {
+          border = t.primaryBorder;
         }
-        if (states.contains(WidgetState.disabled)) {
-          return BorderSide(width: 2, color: disabledColor);
-        }
-        if (states.contains(WidgetState.error)) {
-          return BorderSide(width: 2, color: colors.error);
-        }
-        return BorderSide(width: 2, color: colors.outline);
-      }),
-    );
 
-    final hasText = label != null || description != null || hasError;
-    if (!hasText) {
-      return Material(type: MaterialType.transparency, child: box);
-    }
-
-    final textStyle = theme.textTheme.bodyMedium ?? const TextStyle();
-    final labelStyle = textStyle.copyWith(
-      fontSize: 14,
-      height: 24 / 14,
-      color: _isEnabled ? colors.onSurface : disabledColor,
-    );
-    final helperStyle = textStyle.copyWith(fontSize: 13, height: 18 / 13);
-
-    return Material(
-      type: MaterialType.transparency,
-      child: MergeSemantics(
-        child: MouseRegion(
-          cursor: _isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _isEnabled ? _toggle : null,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                box,
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (label case final label?) Text(label, style: labelStyle),
-                      if (description case final description?)
-                        Text(
-                          description,
-                          style: helperStyle.copyWith(
-                            color: _isEnabled ? colors.onSurfaceVariant : disabledColor,
-                          ),
-                        ),
-                      if (errorText case final errorText?)
-                        Text(errorText, style: helperStyle.copyWith(color: colors.error)),
-                    ],
-                  ),
-                ),
-              ],
+        final box = SizedBox.square(
+          dimension: 24,
+          child: Center(
+            child: AnimatedContainer(
+              duration: AppDurations.fast,
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: fill,
+                borderRadius: AppRadius.all(AppRadius.xs),
+                border: Border.all(color: border, width: 1.5),
+                boxShadow: focused ? [BoxShadow(color: t.focusRing, spreadRadius: 3)] : null,
+              ),
+              child: isOn
+                  ? AppIcon(
+                      isIndeterminate ? AppIcons.minus : AppIcons.check,
+                      size: 14,
+                      strokeWidth: 3,
+                      color: t.onPrimary,
+                    )
+                  : null,
             ),
           ),
-        ),
-      ),
+        );
+
+        final hasText = label != null || description != null || hasError;
+        if (!hasText) return box;
+
+        final textColor = isDisabled ? t.textDisabled : t.textStrong;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            box,
+            const SizedBox(width: AppSpacing.s2),
+            Flexible(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (label case final text?)
+                    Text(text, style: AppType.style(AppType.md, color: textColor, height: 24 / 14)),
+                  if (description case final text?)
+                    Text(
+                      text,
+                      style: AppType.style(
+                        AppType.sm,
+                        color: isDisabled ? t.textDisabled : t.textMuted,
+                        height: 18 / 13,
+                      ),
+                    ),
+                  if (errorText case final text?)
+                    Text(text, style: AppType.style(AppType.sm, color: t.dangerText, height: 18 / 13)),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
